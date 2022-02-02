@@ -37,26 +37,25 @@ async fn process_socket(mut socket : TcpStream, sender : Sender<Message>){
                 
                 let message_bin = buf.to_vec();
                 
-                let message_text = std::str::from_utf8(&message_bin);
-                
-                match message_text{
-                    Ok(message_text) => {
-                        let to_send = Message::Message(message_text.trim().to_owned());
-                        let result = sender.send(to_send);
+                let decoded = bincode::deserialize(&message_bin);
+
+                match decoded{
+                    Ok(message) => {
+                        println!("message received from : {:?}, message is : {:?}", socket.peer_addr(), message);
+                        let result = sender.send(message);
                         if result.is_err(){
                             eprintln!("err, can't write in channel")
                         }
                     },
-                    Err(err) => {
-                        eprintln!("{}", err)
-                    }
+                    Err(err) => eprintln!("unexpected message type : {}", err),
                 }
             }
             
             Ok(message_receive) = receiver.recv() => {
                 match message_receive{
                     Message::Message(message) =>  {
-                        let result = socket.write_all(message.as_bytes()).await;
+                        let to_send = bincode::serialize(&message).unwrap();
+                        let result = socket.write_all(&to_send).await;
                         if result.is_err(){
                             eprintln!("err, can't write in socket")
                         }

@@ -1,5 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
+use common::Message;
 use tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
 
 
@@ -12,7 +13,9 @@ async fn main() {
 
     match socket {
         Ok(mut socket) => {
-            socket.write_all(b"je suis connecter").await.expect("message not send");
+            let to_serialze = Message::Message("Je suis connecter".to_owned());
+            let to_send = bincode::serialize(&to_serialze).unwrap();
+            socket.write_all(&to_send).await.expect("message not send");
             process_socket(socket).await;
         },
         Err(err) => panic!("can't connect to server : {}", err),
@@ -31,15 +34,13 @@ async fn process_socket(mut socket : TcpStream){
                 
                 let message_bin = buf.to_vec();
                 
-                let message_text = std::str::from_utf8(&message_bin);
-                
-                match message_text{
-                    Ok(message_text) => {
-                        println!("{}", message_text);
+                let decoded = bincode::deserialize::<Message>(&message_bin);
+
+                match decoded{
+                    Ok(message) => {
+                        println!("message received from : {:?}, message is : {:?}", socket.peer_addr(), message);
                     },
-                    Err(err) => {
-                        eprintln!("{}", err)
-                    }
+                    Err(err) => eprintln!("unexpected message type : {}", err),
                 }
             }
         }
