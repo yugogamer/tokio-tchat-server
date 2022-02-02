@@ -1,10 +1,5 @@
+use common::Message;
 use tokio::{net::{TcpListener, TcpStream}, io::{AsyncReadExt, AsyncWriteExt}, sync::broadcast::{self, Sender}};
-
-
-#[derive(Clone)]
-enum Message {
-    Message(String)
-}
 
 
 #[tokio::main]
