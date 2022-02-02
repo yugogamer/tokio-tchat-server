@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct  Message {
-    Message(String)
+    pub message : String
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

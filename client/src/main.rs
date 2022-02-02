@@ -1,7 +1,10 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use common::Message;
-use tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
+use crossterm::event::{EventStream, KeyCode, Event};
+
+use futures::{future::FutureExt, StreamExt};
+use tokio::{net::{TcpStream}, io::{AsyncWriteExt, AsyncReadExt}};
 
 
 
@@ -13,9 +16,7 @@ async fn main() {
 
     match socket {
         Ok(mut socket) => {
-            let to_serialze = Message::Message("Je suis connecter".to_owned());
-            let to_send = bincode::serialize(&to_serialze).unwrap();
-            socket.write_all(&to_send).await.expect("message not send");
+            send_message("je suis connecter".to_owned(), &mut socket).await;
             process_socket(socket).await;
         },
         Err(err) => panic!("can't connect to server : {}", err),
@@ -24,8 +25,11 @@ async fn main() {
 
 async fn process_socket(mut socket : TcpStream){
     let mut buf = [0; 1024];
+    let mut reader = EventStream::new();
 
     loop {
+        let event = reader.next().fuse();
+
         tokio::select! {
             Ok(message_lenght) = socket.read(&mut buf) => {
                 if message_lenght == 0 {
@@ -43,7 +47,27 @@ async fn process_socket(mut socket : TcpStream){
                     Err(err) => eprintln!("unexpected message type : {}", err),
                 }
             }
+
+            maybe_event = event => {
+                match maybe_event {
+                    Some(Ok(event)) => {
+                        if event == Event::Key(KeyCode::Char('c').into()) {
+                            send_message("Message here".to_owned(), &mut socket).await;
+                        }
+                    },
+                    Some(Err(e)) => println!("Error: {:?}\r", e),
+                    None => break,
+                }
+            }
         }
-        
+    }
+}
+
+async fn send_message(message : String, socket :  &mut TcpStream){
+    let message_to_serialize = Message{message : message};
+    let message_to_send = bincode::serialize(&message_to_serialize).unwrap();
+    let result = socket.write_all(&message_to_send).await;
+    if result.is_err(){
+        eprintln!("error, can't send message");
     }
 }

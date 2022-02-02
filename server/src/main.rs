@@ -52,14 +52,10 @@ async fn process_socket(mut socket : TcpStream, sender : Sender<Message>){
             }
             
             Ok(message_receive) = receiver.recv() => {
-                match message_receive{
-                    Message::Message(message) =>  {
-                        let to_send = bincode::serialize(&message).unwrap();
-                        let result = socket.write_all(&to_send).await;
-                        if result.is_err(){
-                            eprintln!("err, can't write in socket")
-                        }
-                    },
+                let to_send = bincode::serialize(&message_receive).unwrap();
+                let result = socket.write_all(&to_send).await;
+                if result.is_err(){
+                    eprintln!("err, can't write in socket")
                 }
             }
         }
